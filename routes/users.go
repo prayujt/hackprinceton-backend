@@ -46,10 +46,10 @@ func registerUser(res http.ResponseWriter, req *http.Request) {
 		(id, email, name, username, password, created_at, updated_at)
 		VALUES (
 			gen_random_uuid(),
-			?,
-			?,
-			?,
-			encode(sha256(?), 'hex'),
+			$1,
+			$2,
+			$3,
+			encode(sha256($4), 'hex'),
 			now(),
 			now()
 		)
@@ -82,10 +82,10 @@ func loginUser(res http.ResponseWriter, req *http.Request) {
 		SELECT id, email, name, username
 		FROM users
 		WHERE
-		(username = ? OR email = ?)
-		AND password = encode(sha256(?), 'hex')
+		(username = $1 OR email = $1)
+		AND password = encode(sha256($2), 'hex')
 		`,
-		loginReq.Identifier, loginReq.Identifier, loginReq.Password,
+		loginReq.Identifier, loginReq.Password,
 	)
 
 	if len(user) == 0 {

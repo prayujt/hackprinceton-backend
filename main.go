@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +14,7 @@ import (
 )
 
 func main() {
+	openaiKey := os.Getenv("OPENAI_KEY")
 	databaseUrl := os.Getenv("DATABASE_URL")
 	if databaseUrl == "" {
 		log.Fatal("DATABASE_URL must be set")
@@ -30,8 +30,9 @@ func main() {
 
 	r := mux.NewRouter()
 	routes.HandleUserRoutes(r)
+	routes.HandleSetRoutes(r, openaiKey)
 
-	fmt.Println("Server running on 0.0.0.0:8080")
+	log.Println("Server running on 0.0.0.0:8080")
 
 	if environment == "development" {
 		corsMiddleware := handlers.CORS(

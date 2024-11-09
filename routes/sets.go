@@ -26,7 +26,20 @@ type Card struct {
 	Back   string `json:"back" database:"back"`
 }
 
-func HandleSetRoutes(r *mux.Router) {
+type CreateSetRequest struct {
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
+	Options     CreateSetOptions `json:"options"`
+}
+
+type CreateSetOptions struct {
+	CardCount    int `json:"cardCount"`
+	Suggesstions int `json:"suggestions"`
+}
+
+var openaiKey string
+
+func HandleSetRoutes(r *mux.Router, _openaiKey string) {
 	s := r.PathPrefix("/sets").Subrouter()
 
 	s.Use(AuthHandle)
@@ -37,6 +50,8 @@ func HandleSetRoutes(r *mux.Router) {
 	s.HandleFunc("/{setId}", getSet).Methods("GET")
 	s.HandleFunc("/{setId}", updateSet).Methods("PUT")
 	s.HandleFunc("/{setId}", deleteSet).Methods("DELETE")
+
+	openaiKey = _openaiKey
 }
 
 func getSets(res http.ResponseWriter, req *http.Request) {
@@ -63,10 +78,34 @@ func getSets(res http.ResponseWriter, req *http.Request) {
 
 func createSet(res http.ResponseWriter, req *http.Request) {
 	log.Println("POST /sets")
-	acc, err := utils.DecodeBody[Set](req)
+
+	// 512 MB limit on file size
+	err := req.ParseMultipartForm(512 << 20)
 	if err != nil {
-		res.WriteHeader(http.StatusBadRequest)
+		http.Error(res, "Failed to parse multipart form", http.StatusBadRequest)
 		return
+	}
+
+	file, handler, err := req.FormFile("file")
+	if err != nil {
+		http.Error(res, "Error retrieving the file", http.StatusBadRequest)
+		return
+	}
+
+	defer file.Close()
+
+	log.Printf("Uploaded File: %+v\n", handler.Filename)
+	log.Printf("File Size: %+v\n", handler.Size)
+	log.Printf("MIME Header: %+v\n", handler.Header)
+
+	var metadata CreateSetRequest
+	metadataField := req.FormValue("metadata")
+
+	if metadataField != "" {
+		if err := json.Unmarshal([]byte(metadataField), &metadata); err != nil {
+			http.Error(res, "Failed to decode JSON metadata", http.StatusBadRequest)
+			return
+		}
 	}
 
 	claims := GetClaims(req)
@@ -77,14 +116,14 @@ func createSet(res http.ResponseWriter, req *http.Request) {
 		(id, name, description, author_id, created_at, updated_at)
 		VALUES (
 			gen_random_uuid(),
-			?,
-			?,
-			?,
+			$1,
+			$2,
+			$3,
 			now(),
 			now()
 		)
 		`,
-		acc.Name, acc.Description, claims.UserId,
+		metadata.Name, metadata.Description, claims.UserId,
 	)
 
 	if err != nil {
@@ -106,7 +145,7 @@ func getSet(res http.ResponseWriter, req *http.Request) {
 		`
 		SELECT id, name, description, author_id
 		FROM sets
-		WHERE id = ?
+		WHERE id = $1
 		`,
 		setId,
 	)
@@ -129,7 +168,7 @@ func getSetCards(res http.ResponseWriter, req *http.Request) {
 		`
 		SELECT id, front, back, set_id
 		FROM cards
-		WHERE set_id = ?
+		WHERE set_id = $1
 		`,
 		setId,
 	)
@@ -154,8 +193,8 @@ func updateSet(res http.ResponseWriter, req *http.Request) {
 	_, err = Execute(
 		`
 		UPDATE sets
-		SET name = ?, description = ?
-		WHERE id = ?
+		SET name = $1, description = $2
+		WHERE id = $3
 		`,
 		acc.Name, acc.Description, setId,
 	)
@@ -176,7 +215,7 @@ func deleteSet(res http.ResponseWriter, req *http.Request) {
 	_, err := Execute(
 		`
 		DELETE FROM sets
-		WHERE id = ?
+		WHERE id = $1
 		`,
 		setId,
 	)
