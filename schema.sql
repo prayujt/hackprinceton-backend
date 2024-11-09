@@ -14,7 +14,7 @@ CREATE TABLE sets (
     description TEXT,
     author_id UUID NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (author_id) REFERENCES users(id)
 );
 
@@ -24,7 +24,7 @@ CREATE TABLE cards (
     front JSON NOT NULL,
     back JSON NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (set_id) REFERENCES sets(id)
 );
 
@@ -35,7 +35,7 @@ CREATE TABLE stats (
     answered_count INT DEFAULT 0,
     correct_count INT DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, card_id),
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (card_id) REFERENCES cards(id)

@@ -19,6 +19,13 @@ type Set struct {
 	AuthorId    string `json:"authorId" database:"author_id"`
 }
 
+type Card struct {
+	CardId string `json:"cardId" database:"id"`
+	SetId  string `json:"setId" database:"set_id"`
+	Front  string `json:"front" database:"front"`
+	Back   string `json:"back" database:"back"`
+}
+
 func HandleSetRoutes(r *mux.Router) {
 	s := r.PathPrefix("/sets").Subrouter()
 
@@ -63,10 +70,6 @@ func createSet(res http.ResponseWriter, req *http.Request) {
 	}
 
 	claims := GetClaims(req)
-	if err != nil {
-		res.WriteHeader(http.StatusUnauthorized)
-		return
-	}
 
 	_, err = Execute(
 		`
@@ -113,6 +116,28 @@ func getSet(res http.ResponseWriter, req *http.Request) {
 	} else {
 		json.NewEncoder(res).Encode(set[0])
 	}
+}
+
+func getSetCards(res http.ResponseWriter, req *http.Request) {
+	log.Println("GET /sets/{setId}/cards")
+	params := mux.Vars(req)
+	setId := params["setId"]
+
+	cards := []Card{}
+	Query(
+		&cards,
+		`
+		SELECT id, front, back, set_id
+		FROM cards
+		WHERE set_id = ?
+		`,
+		setId,
+	)
+
+	if len(cards) == 0 {
+		cards = make([]Card, 0)
+	}
+	json.NewEncoder(res).Encode(cards)
 }
 
 func updateSet(res http.ResponseWriter, req *http.Request) {
