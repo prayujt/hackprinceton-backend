@@ -247,11 +247,13 @@ func createSet(res http.ResponseWriter, req *http.Request) {
 	cardResponses := msgs.Messages[0].Content[0].Text.Value
 
 	prefixIndex := strings.Index(cardResponses, "```json")
-
 	if prefixIndex != -1 {
-		cardResponses = cardResponses[prefixIndex+len("```json"):]
+		suffixIndex := strings.Index(cardResponses[prefixIndex+len("```json"):], "```")
+		if suffixIndex != -1 {
+			suffixIndex += prefixIndex + len("```json")
+			cardResponses = cardResponses[prefixIndex+len("```json") : suffixIndex]
+		}
 	}
-	cardResponses = strings.TrimSuffix(cardResponses, "```")
 
 	err = openaiClient.DeleteFile(context.Background(), openaiFile.ID)
 	if err != nil {
