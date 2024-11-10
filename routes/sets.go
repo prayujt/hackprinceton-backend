@@ -30,7 +30,7 @@ type Set struct {
 }
 
 type Card struct {
-	CardId string `json:"cardId" database:"id"`
+	CardId string `json:"id" database:"id"`
 	SetId  string `json:"setId" database:"set_id"`
 	Front  string `json:"front" database:"front"`
 	Back   string `json:"back" database:"back"`
@@ -314,32 +314,23 @@ func createSet(res http.ResponseWriter, req *http.Request) {
 }
 
 func getSet(res http.ResponseWriter, req *http.Request) {
-	log.Println("GET /sets/{setId}")
-	params := mux.Vars(req)
-	setId := params["setId"]
-
-	set := []Set{}
-	Query(
-		&set,
-		`
-		SELECT id, name, description, author_id
-		FROM sets
-		WHERE id = $1
-		`,
-		setId,
-	)
-
-	if len(set) == 0 {
-		res.WriteHeader(http.StatusNotFound)
-	} else {
-		json.NewEncoder(res).Encode(set[0])
-	}
-}
-
-func getSetCards(res http.ResponseWriter, req *http.Request) {
 	log.Println("GET /sets/{setId}/cards")
 	params := mux.Vars(req)
 	setId := params["setId"]
+
+	type SetResponse struct {
+		SetName string `json:"setName"`
+		Cards   []Card `json:"cards"`
+	}
+
+	var response SetResponse
+
+	var setName string
+	QueryValue(&setName, `
+		SELECT name
+		FROM sets
+		WHERE id = $1`,
+		setId)
 
 	cards := []Card{}
 	Query(
@@ -347,15 +338,17 @@ func getSetCards(res http.ResponseWriter, req *http.Request) {
 		`
 		SELECT id, front, back, set_id
 		FROM cards
-		WHERE set_id = $1
+		WHERE set_id = $1;
 		`,
 		setId,
 	)
 
+	response.SetName = setName
+	response.Cards = cards
 	if len(cards) == 0 {
-		cards = make([]Card, 0)
+		response.Cards = make([]Card, 0)
 	}
-	json.NewEncoder(res).Encode(cards)
+	json.NewEncoder(res).Encode(response)
 }
 
 func updateSet(res http.ResponseWriter, req *http.Request) {
