@@ -13,7 +13,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
-	// "github.com/openai/openai-go"
 	openai "github.com/sashabaranov/go-openai"
 
 	. "hackprinceton/database"
@@ -208,9 +207,11 @@ func createSet(res http.ResponseWriter, req *http.Request) {
 				The question content should be an array of the options, including the question.
 				The question should always be the first item in the array, and the options should be following it, with a total of 5 items in the array.
 				The answer should be the correct option, prefaced with the letter corresponding to the option (a, b, c, or d). e.g. "a) This is the correct answer".
+				The letter should always be in lowercase.
 				If it is Normal, the question content should be plaintext, and the answer should be the answer to that question.
 				Never generate more flashcards for each category than specified.
 				Please do not add any additional text to the JSON response.
+				It should always only contain the JSON body, with no text before or after.
 				As a suggestion, focus on the following topic: %s
 				`,
 				metadata.Options.TrueFalseCount,
@@ -245,7 +246,11 @@ func createSet(res http.ResponseWriter, req *http.Request) {
 	msgs, err := openaiClient.ListMessage(context.Background(), thread.ID, nil, nil, nil, nil, &run.ID)
 	cardResponses := msgs.Messages[0].Content[0].Text.Value
 
-	cardResponses = strings.TrimPrefix(cardResponses, "```json")
+	prefixIndex := strings.Index(cardResponses, "```json")
+
+	if prefixIndex != -1 {
+		cardResponses = cardResponses[prefixIndex+len("```json"):]
+	}
 	cardResponses = strings.TrimSuffix(cardResponses, "```")
 
 	err = openaiClient.DeleteFile(context.Background(), openaiFile.ID)
