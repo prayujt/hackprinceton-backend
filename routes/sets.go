@@ -36,8 +36,13 @@ type Card struct {
 }
 
 type CreateCard struct {
-	Question string `json:"question"`
-	Answer   string `json:"answer"`
+	Question Question `json:"question"`
+	Answer   string   `json:"answer"`
+}
+
+type Question struct {
+	Type    string      `json:"type"`
+	Content interface{} `json:"content"`
 }
 
 type CreateSetRequest struct {
@@ -47,8 +52,10 @@ type CreateSetRequest struct {
 }
 
 type CreateSetOptions struct {
-	CardCount   int    `json:"cardCount"`
-	Suggestions string `json:"suggestions"`
+	TrueFalseCount      int    `json:"tfCount"`
+	MultipleChoiceCount int    `json:"mcCount"`
+	NormalCount         int    `json:"normalCount"`
+	Suggestions         string `json:"suggestions"`
 }
 
 var openaiClient *openai.Client
@@ -166,8 +173,25 @@ func createSet(res http.ResponseWriter, req *http.Request) {
 		openai.MessageRequest{
 			Role: string(openai.ThreadMessageRoleUser),
 			Content: fmt.Sprintf(
-				"Please generate exactly %d flash cards from the file given. Structure the response in JSON format, with a key for question and answer for each flash card. Please return this as an array of these objects without any additional text. As a suggestion, focus on the following topic: %s",
-				metadata.Options.CardCount,
+				`
+				Please generate flash cards from the file given to help study and understand it.
+				Structure the response as an array of JSON objects, with a key for question and answer for each flash card.
+				The question will always be a JSON object as well, with a key for type, which will be either "tf", "mc", or "normal", and a key for content, which will be the question itself formatted as specified.
+				Each flash card will be one of three types: True/False, Multiple Choice, or Normal.
+				You should generate %d True/False, %d Multiple Choice, and %d Normal flash cards.
+        If it is True/False, the answer should be either "True" or "False", and the question content should be a statement.
+				If it is Multiple Choice, there should be 4 options, with the correct answer being one of them.
+				The question content should be an array of the options, including the question.
+				The question should always be the first item in the array, and the options should be following it, with a total of 5 items in the array.
+				The answer should be the correct option, prefaced with the letter corresponding to the option (a, b, c, or d). e.g. "a) This is the correct answer".
+				If it is Normal, the question content should be plaintext, and the answer should be the answer to that question.
+				Never generate more flashcards for each category than specified.
+				Please do not add any additional text to the JSON response.
+				As a suggestion, focus on the following topic: %s
+				`,
+				metadata.Options.TrueFalseCount,
+				metadata.Options.MultipleChoiceCount,
+				metadata.Options.NormalCount,
 				metadata.Options.Suggestions,
 			),
 		})
@@ -238,7 +262,7 @@ func createSet(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	for _, card := range cards {
-		// log.Printf("Card: %s, %s", card.Question, card.Answer)
+		log.Printf("Card: %v, %s", card.Question, card.Answer)
 		_, err = Execute(
 			`
 			INSERT INTO cards
