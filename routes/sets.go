@@ -26,6 +26,7 @@ type Set struct {
 	Name        string `json:"name" database:"name"`
 	Description string `json:"description" database:"description"`
 	AuthorId    string `json:"authorId" database:"author_id"`
+	CardCount   int    `json:"cardCount" database:"card_count"`
 }
 
 type Card struct {
@@ -84,9 +85,25 @@ func getSets(res http.ResponseWriter, req *http.Request) {
 	Query(
 		&sets,
 		`
-		SELECT id, name, description, author_id
-		FROM sets
-		WHERE author_id = ?
+		SELECT
+				s.id AS id,
+				s.name AS name,
+				s.description AS description,
+				s.author_id AS author_id,
+				COALESCE(card_count, 0) AS card_count
+		FROM
+				sets s
+		LEFT JOIN (
+				SELECT
+						set_id,
+						COUNT(*) AS card_count
+				FROM
+						cards
+				GROUP BY
+						set_id
+		) c ON s.id = c.set_id
+		WHERE
+				s.author_id = $1
 		`,
 		claims.UserId,
 	)
@@ -149,7 +166,13 @@ func createSet(res http.ResponseWriter, req *http.Request) {
 	}
 
 	assistantName := "Flash Card Generator"
-	assistantInstructions := "You are given a file. You need to perform the action specified in the next instruction using the information from the file. It will be given as a PDF file. Your response should be in JSON format in the manner specified. The output should be directly parseable by a JSON decoder. Do not include any additional text in your response."
+	assistantInstructions := `
+		You are given a file.
+		You need to perform the action specified in the next instruction using the information from the file.
+		It will be given as a PDF file.
+		Your response should be in JSON format in the manner specified.
+		The output should be directly parseable by a JSON decoder.
+		Do not include any additional text in your response.`
 
 	assistant, err := openaiClient.CreateAssistant(context.Background(), openai.AssistantRequest{
 		Name:         &assistantName,
@@ -179,6 +202,7 @@ func createSet(res http.ResponseWriter, req *http.Request) {
 				The question will always be a JSON object as well, with a key for type, which will be either "tf", "mc", or "normal", and a key for content, which will be the question itself formatted as specified.
 				Each flash card will be one of three types: True/False, Multiple Choice, or Normal.
 				You should generate %d True/False, %d Multiple Choice, and %d Normal flash cards.
+				If these above counts are all -1, you can generate any number of each type, depending on how many you think are appropriate given the file content.
         If it is True/False, the answer should be either "True" or "False", and the question content should be a statement.
 				If it is Multiple Choice, there should be 4 options, with the correct answer being one of them.
 				The question content should be an array of the options, including the question.
@@ -286,6 +310,7 @@ func createSet(res http.ResponseWriter, req *http.Request) {
 	}
 
 	res.WriteHeader(http.StatusOK)
+	json.NewEncoder(res).Encode(map[string]string{"setId": setId})
 }
 
 func getSet(res http.ResponseWriter, req *http.Request) {

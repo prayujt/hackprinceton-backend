@@ -100,5 +100,10 @@ func loginUser(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	json.NewEncoder(res).Encode(map[string]string{"token": token})
+	type LoginResponse struct {
+		Token string `json:"token"`
+		User  User   `json:"user"`
+	}
+
+	json.NewEncoder(res).Encode(LoginResponse{token, user[0]})
 }
