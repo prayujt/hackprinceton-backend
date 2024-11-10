@@ -391,6 +391,18 @@ func deleteSet(res http.ResponseWriter, req *http.Request) {
 
 	_, err := Execute(
 		`
+		DELETE FROM cards
+		WHERE set_id = $1
+		`,
+		setId,
+	)
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	_, err = Execute(
+		`
 		DELETE FROM sets
 		WHERE id = $1
 		`,
