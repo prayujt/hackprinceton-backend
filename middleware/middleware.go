@@ -8,6 +8,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strings"
 )
 
 func GetClaims(request *http.Request) auth.Claims {
@@ -36,12 +37,13 @@ func GetClaims(request *http.Request) auth.Claims {
 
 func AuthHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		token := request.Header.Get("Token")
+		token := request.Header.Get("Authorization")
 		if token == "" {
 			log.Println("No token is given")
 			response.WriteHeader(http.StatusUnauthorized)
 			return
 		}
+		token = strings.TrimPrefix(token, "Bearer ")
 		claims, err := auth.ParseJWT(token)
 
 		if err != nil {
@@ -57,12 +59,13 @@ func AuthHandle(next http.Handler) http.Handler {
 
 func AuthHandler(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		token := request.Header.Get("Token")
+		token := request.Header.Get("Authorization")
 		if token == "" {
 			log.Println("No token is given")
 			response.WriteHeader(http.StatusUnauthorized)
 			return
 		}
+		token = strings.TrimPrefix(token, "Bearer ")
 		claims, err := auth.ParseJWT(token)
 
 		if err != nil {

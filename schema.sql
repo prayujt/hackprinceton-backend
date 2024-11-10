@@ -21,8 +21,8 @@ CREATE TABLE sets (
 CREATE TABLE cards (
     id UUID PRIMARY KEY,
     set_id UUID NOT NULL,
-    front JSON NOT NULL,
-    back JSON NOT NULL,
+    front TEXT NOT NULL,
+    back TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (set_id) REFERENCES sets(id)

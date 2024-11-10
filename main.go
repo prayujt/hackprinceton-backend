@@ -9,12 +9,24 @@ import (
 	"github.com/gorilla/mux"
 	_ "github.com/jackc/pgx/v5/stdlib"
 
+	// "github.com/openai/openai-go"
+	// "github.com/openai/openai-go/option"
+	openai "github.com/sashabaranov/go-openai"
+
 	"hackprinceton/database"
 	"hackprinceton/routes"
 )
 
 func main() {
 	openaiKey := os.Getenv("OPENAI_KEY")
+	// openaiClient := openai.NewClient(
+	// 	option.WithHeader("OpenAI-Beta", "assistants=v2"),
+	// 	option.WithAPIKey(openaiKey),
+	// )
+	config := openai.DefaultConfig(openaiKey)
+	config.AssistantVersion = "v1"
+	openaiClient := openai.NewClientWithConfig(config)
+
 	databaseUrl := os.Getenv("DATABASE_URL")
 	if databaseUrl == "" {
 		log.Fatal("DATABASE_URL must be set")
@@ -30,7 +42,7 @@ func main() {
 
 	r := mux.NewRouter()
 	routes.HandleUserRoutes(r)
-	routes.HandleSetRoutes(r, openaiKey)
+	routes.HandleSetRoutes(r, openaiClient)
 
 	log.Println("Server running on 0.0.0.0:8080")
 
