@@ -12,7 +12,7 @@ WORKDIR /usr/src/app
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -o calendar-backend
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -o hackprinceton
 
 
 FROM debian:bookworm-slim
